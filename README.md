@@ -121,7 +121,7 @@ peon-ping works with any agentic IDE that supports hooks. Adapters translate IDE
 
 ## Sound packs
 
-40+ packs across Warcraft, StarCraft, Red Alert, Portal, Zelda, Dota 2, Helldivers 2, Elder Scrolls, and more. The default install includes 10 curated English packs:
+43+ packs across Warcraft, StarCraft, Red Alert, Portal, Zelda, Dota 2, Helldivers 2, Elder Scrolls, and more. The default install includes 10 curated English packs:
 
 | Pack | Character | Sounds |
 |---|---|---|
