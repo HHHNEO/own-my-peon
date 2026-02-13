@@ -4,7 +4,8 @@
 # Originally made by https://github.com/SpamsRevenge in https://github.com/PeonPing/peon-ping/issues/94
 
 param(
-    [string]$Packs = "",
+    [Parameter()]
+    $Packs = @(),
     [switch]$All
 )
 
@@ -19,6 +20,7 @@ $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
 $InstallDir = Join-Path $ClaudeDir "hooks\peon-ping"
 $SettingsFile = Join-Path $ClaudeDir "settings.json"
 $RegistryUrl = "https://peonping.github.io/registry/index.json"
+$RepoBase = "https://raw.githubusercontent.com/PeonPing/peon-ping/main"
 
 # --- Check Claude Code is installed ---
 $Updating = $false
@@ -48,9 +50,14 @@ try {
 
 # --- Decide which packs to download ---
 $packsToInstall = @()
-if ($Packs) {
-    # Custom pack list (comma-separated)
-    $customPackNames = $Packs -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+if ($Packs -and $Packs.Count -gt 0) {
+    # Custom pack list (accepts array or comma-separated string)
+    $customPackNames = @()
+    if ($Packs -is [array]) {
+        $customPackNames = $Packs | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ }
+    } else {
+        $customPackNames = $Packs.ToString() -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    }
     $packsToInstall = $registry.packs | Where-Object { $_.name -in $customPackNames }
     Write-Host "  Installing custom packs: $($customPackNames -join ', ')" -ForegroundColor Cyan
 } elseif ($All) {
@@ -357,7 +364,8 @@ switch ($hookEvent) {
             # Stop event already played the sound
             $category = $null
         } else {
-            $category = $null
+            # Other notification types (e.g., tool results) map to task.complete
+            $category = "task.complete"
         }
     }
     "PermissionRequest" {
@@ -448,8 +456,44 @@ try {
 $volume = $config.volume
 if (-not $volume) { $volume = 0.5 }
 
-$scriptPath = Join-Path $InstallDir "scripts\win-play.ps1"
-$null = Start-Process -WindowStyle Hidden -FilePath "powershell.exe" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$scriptPath,"-path",$soundPath,"-vol",$volume
+# Inline playback (no external script needed)
+$playbackScript = @"
+`$path = '$soundPath'
+`$vol = $volume
+try {
+    Add-Type -AssemblyName PresentationCore
+    `$player = New-Object System.Windows.Media.MediaPlayer
+    `$player.Open([Uri]::new("file:///`$(`$path -replace '\\\\','/')"))
+    `$player.Volume = `$vol
+    Start-Sleep -Milliseconds 150
+    `$player.Play()
+    `$timeout = 50
+    while (`$timeout -gt 0 -and `$player.Position.TotalMilliseconds -eq 0) {
+        Start-Sleep -Milliseconds 100
+        `$timeout--
+    }
+    if (`$player.NaturalDuration.HasTimeSpan) {
+        `$remaining = `$player.NaturalDuration.TimeSpan.TotalMilliseconds - `$player.Position.TotalMilliseconds
+        if (`$remaining -gt 0 -and `$remaining -lt 5000) {
+            Start-Sleep -Milliseconds ([int]`$remaining + 100)
+        }
+    } else {
+        Start-Sleep -Seconds 2
+    }
+    `$player.Close()
+} catch {
+    if (`$path -match "\.wav`$") {
+        try {
+            `$sp = New-Object System.Media.SoundPlayer `$path
+            `$sp.Play()
+            Start-Sleep -Seconds 2
+            `$sp.Dispose()
+        } catch {}
+    }
+}
+"@
+
+$null = Start-Process -WindowStyle Hidden -FilePath "powershell.exe" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command",$playbackScript
 
 exit 0
 '@
@@ -544,36 +588,40 @@ Write-Host "Installing skills..."
 
 $skillsSourceDir = Join-Path $PSScriptRoot "skills"
 $skillsTargetDir = Join-Path $ClaudeDir "skills"
+New-Item -ItemType Directory -Path $skillsTargetDir -Force | Out-Null
+
+$skillNames = @("peon-ping-toggle", "peon-ping-config")
 
 if (Test-Path $skillsSourceDir) {
-    New-Item -ItemType Directory -Path $skillsTargetDir -Force | Out-Null
-
-    Get-ChildItem -Path $skillsSourceDir -Directory | ForEach-Object {
-        $skillName = $_.Name
-        $skillTarget = Join-Path $skillsTargetDir $skillName
-
-        # Remove old version if exists
-        if (Test-Path $skillTarget) {
-            Remove-Item -Path $skillTarget -Recurse -Force
+    # Local install: copy from repo
+    foreach ($skillName in $skillNames) {
+        $skillSource = Join-Path $skillsSourceDir $skillName
+        if (Test-Path $skillSource) {
+            $skillTarget = Join-Path $skillsTargetDir $skillName
+            if (Test-Path $skillTarget) {
+                Remove-Item -Path $skillTarget -Recurse -Force
+            }
+            Copy-Item -Path $skillSource -Destination $skillTarget -Recurse -Force
+            Write-Host "  /$skillName" -ForegroundColor DarkGray
         }
-
-        # Copy skill
-        Copy-Item -Path $_.FullName -Destination $skillTarget -Recurse -Force
-        Write-Host "  /$skillName" -ForegroundColor DarkGray
     }
-
     Write-Host "  Skills installed" -ForegroundColor Green
 } else {
-    Write-Host "  Skills directory not found, skipping" -ForegroundColor Yellow
-}
+    # One-liner install: download from GitHub
+    foreach ($skillName in $skillNames) {
+        $skillTarget = Join-Path $skillsTargetDir $skillName
+        New-Item -ItemType Directory -Path $skillTarget -Force | Out-Null
 
-# --- Install scripts ---
-$scriptsSourceDir = Join-Path $PSScriptRoot "scripts"
-$scriptsTargetDir = Join-Path $InstallDir "scripts"
-
-if (Test-Path $scriptsSourceDir) {
-    New-Item -ItemType Directory -Path $scriptsTargetDir -Force | Out-Null
-    Copy-Item -Path "$scriptsSourceDir\*.ps1" -Destination $scriptsTargetDir -Force
+        $skillUrl = "$RepoBase/skills/$skillName/SKILL.md"
+        $skillFile = Join-Path $skillTarget "SKILL.md"
+        try {
+            Invoke-WebRequest -Uri $skillUrl -OutFile $skillFile -UseBasicParsing -ErrorAction Stop
+            Write-Host "  /$skillName" -ForegroundColor DarkGray
+        } catch {
+            Write-Host "  Warning: Could not download $skillName" -ForegroundColor Yellow
+        }
+    }
+    Write-Host "  Skills installed" -ForegroundColor Green
 }
 
 # --- Test sound ---
@@ -588,17 +636,47 @@ $testPackDir = Join-Path $InstallDir "packs\$testPack\sounds"
 $testSound = Get-ChildItem -Path $testPackDir -File -ErrorAction SilentlyContinue | Select-Object -First 1
 
 if ($testSound) {
-    $testScriptPath = Join-Path $InstallDir "scripts\win-play.ps1"
-    if (Test-Path $testScriptPath) {
-        try {
-            $proc = Start-Process -WindowStyle Hidden -FilePath "powershell.exe" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$testScriptPath,"-path",$testSound.FullName,"-vol",0.3 -PassThru
-            Start-Sleep -Seconds 3
-            Write-Host "  Sound working!" -ForegroundColor Green
-        } catch {
-            Write-Host "  Warning: Sound playback failed: $_" -ForegroundColor Yellow
+    try {
+        $testPlayback = @"
+`$path = '$($testSound.FullName)'
+`$vol = 0.3
+try {
+    Add-Type -AssemblyName PresentationCore
+    `$player = New-Object System.Windows.Media.MediaPlayer
+    `$player.Open([Uri]::new("file:///`$(`$path -replace '\\\\','/')"))
+    `$player.Volume = `$vol
+    Start-Sleep -Milliseconds 150
+    `$player.Play()
+    `$timeout = 50
+    while (`$timeout -gt 0 -and `$player.Position.TotalMilliseconds -eq 0) {
+        Start-Sleep -Milliseconds 100
+        `$timeout--
+    }
+    if (`$player.NaturalDuration.HasTimeSpan) {
+        `$remaining = `$player.NaturalDuration.TimeSpan.TotalMilliseconds - `$player.Position.TotalMilliseconds
+        if (`$remaining -gt 0 -and `$remaining -lt 5000) {
+            Start-Sleep -Milliseconds ([int]`$remaining + 100)
         }
     } else {
-        Write-Host "  Warning: win-play.ps1 not found" -ForegroundColor Yellow
+        Start-Sleep -Seconds 2
+    }
+    `$player.Close()
+} catch {
+    if (`$path -match "\.wav`$") {
+        try {
+            `$sp = New-Object System.Media.SoundPlayer `$path
+            `$sp.Play()
+            Start-Sleep -Seconds 2
+            `$sp.Dispose()
+        } catch {}
+    }
+}
+"@
+        $proc = Start-Process -WindowStyle Hidden -FilePath "powershell.exe" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command",$testPlayback -PassThru
+        Start-Sleep -Seconds 3
+        Write-Host "  Sound working!" -ForegroundColor Green
+    } catch {
+        Write-Host "  Warning: Sound playback failed: $_" -ForegroundColor Yellow
     }
 } else {
     Write-Host "  Warning: No sound files found for pack '$testPack'" -ForegroundColor Yellow

@@ -1,6 +1,13 @@
 #!/usr/bin/env bats
 # Tests for Windows PowerShell adapter (install.ps1 and peon.ps1)
 # These tests verify the embedded peon.ps1 script in install.ps1
+#
+# Testing approach: Since CI runs on macOS but we need to test PowerShell logic,
+# we extract the embedded peon.ps1 script and simulate its event-mapping behavior
+# using Python. The Python code replicates the PowerShell control flow (event
+# detection, state management, category mapping) and then delegates to the actual
+# peon.sh for sound selection and playback. This lets us verify Windows-specific
+# logic without requiring a Windows CI runner.
 
 load setup.bash
 
