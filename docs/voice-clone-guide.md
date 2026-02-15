@@ -12,8 +12,9 @@ peon-ping ships with game character voice packs, but you can create a pack with 
 |------|---------|
 | Python 3.10+ | Runtime |
 | [uv](https://docs.astral.sh/uv/) | Python package manager |
-| ffmpeg | Audio processing (must be on PATH) |
-| NVIDIA GPU (recommended) | Fish-Speech TTS inference |
+| [Fish-Speech](https://github.com/fishaudio/fish-speech) | TTS server (별도 설치 필요) |
+| NVIDIA GPU | Fish-Speech 추론용 (필수) |
+| ffmpeg | Audio processing (`--separate-vocals` 사용 시) |
 
 ## Step 1: Prepare Reference Audio / 레퍼런스 음성 준비
 
@@ -32,21 +33,33 @@ uv sync
 
 ### Start the Fish-Speech API server
 
-Download the model and start the server:
+Fish-Speech는 own-my-peon과 **별도로** 설치해야 합니다:
 
 ```bash
-# Download model (first time only)
+# 별도 디렉토리에서 Fish-Speech 설치
+git clone https://github.com/fishaudio/fish-speech.git
+cd fish-speech
+pip install -e .
+
+# 모델 다운로드 (최초 1회)
 huggingface-cli download fishaudio/openaudio-s1-mini --local-dir checkpoints/openaudio-s1-mini
 
-# Start API server
-uv run python -m tools.api_server \
+# API 서버 시작 (백그라운드로 유지)
+python -m tools.api_server \
   --listen 127.0.0.1:8080 \
   --llama-checkpoint-path checkpoints/openaudio-s1-mini \
   --decoder-checkpoint-path checkpoints/openaudio-s1-mini/codec.pth \
   --decoder-config-name modded_dac_vq --compile
 ```
 
-The server must be running at `http://127.0.0.1:8080` before generating voices.
+> 자세한 설치 방법은 [Fish-Speech 공식 문서](https://speech.fish.audio/)를 참고하세요.
+
+서버가 `http://127.0.0.1:8080`에서 응답하면 준비 완료입니다. 확인:
+
+```bash
+curl http://127.0.0.1:8080/v1/health
+# {"status":"ok"}
+```
 
 ## Step 3: Define Lines & Generate / 대사 정의 & 음성 생성
 

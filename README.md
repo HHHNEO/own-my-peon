@@ -24,7 +24,7 @@ peon-ping은 AI 코딩 에이전트가 알림을 줄 때 게임 캐릭터 음성
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash
 
-# Windows
+# Windows (PowerShell)
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.ps1" -UseBasicParsing | Invoke-Expression
 ```
 
@@ -38,35 +38,50 @@ cd own-my-peon
 uv sync
 ```
 
-### 3. Set up Fish-Speech TTS
+### 3. Set up Fish-Speech TTS server
+
+이 스크립트는 [Fish-Speech](https://github.com/fishaudio/fish-speech) HTTP API를 호출합니다. 서버를 **별도로** 설치하고 실행해야 합니다.
 
 ```bash
-# Download TTS model (first time only)
+# 별도 디렉토리에서 Fish-Speech 설치
+git clone https://github.com/fishaudio/fish-speech.git
+cd fish-speech
+pip install -e .
+
+# 모델 다운로드 (최초 1회)
 huggingface-cli download fishaudio/openaudio-s1-mini --local-dir checkpoints/openaudio-s1-mini
 
-# Start API server (keep running in background)
-uv run python -m tools.api_server \
+# API 서버 시작 (백그라운드로 유지)
+python -m tools.api_server \
   --listen 127.0.0.1:8080 \
   --llama-checkpoint-path checkpoints/openaudio-s1-mini \
   --decoder-checkpoint-path checkpoints/openaudio-s1-mini/codec.pth \
   --decoder-config-name modded_dac_vq --compile
 ```
 
+> **Note**: Fish-Speech는 CUDA GPU 환경에서 설치하는 것을 권장합니다. 자세한 설치 방법은 [Fish-Speech 공식 문서](https://speech.fish.audio/)를 참고하세요. 서버가 `http://127.0.0.1:8080`에서 응답하면 준비 완료입니다.
+
 ### 4. Generate your voice pack
 
 ```bash
-# In another terminal
+# own-my-peon 디렉토리에서 (다른 터미널)
 uv run python -X utf8 scripts/generate-voice-pack.py \
   --ref-audio path/to/character_voice.wav \
   --lines templates/lines_ja.json \
   --pack-name my_character \
   --lang ja
 
-# Activate
+# 생성 완료 후 활성화
 peon packs use my_character
 ```
 
-**[Full guide with all options &rarr; docs/voice-clone-guide.md](docs/voice-clone-guide.md)**
+스크립트가 하는 일:
+1. 레퍼런스 오디오를 ASR로 자동 전사 (Qwen3-ASR)
+2. 각 대사를 Fish-Speech TTS로 음성 생성
+3. `openpeon.json` 매니페스트 자동 생성 (SHA-256 포함)
+4. peon-ping packs 디렉토리에 바로 출력
+
+**[전체 옵션과 상세 가이드 &rarr; docs/voice-clone-guide.md](docs/voice-clone-guide.md)**
 
 ## Requirements
 
@@ -75,8 +90,8 @@ peon packs use my_character
 | [peon-ping](https://github.com/PeonPing/peon-ping) | Sound notification system |
 | Python 3.10+ | Runtime |
 | [uv](https://docs.astral.sh/uv/) | Python package manager |
-| ffmpeg | Audio processing |
-| NVIDIA GPU (recommended) | Fish-Speech TTS inference |
+| [Fish-Speech](https://github.com/fishaudio/fish-speech) | TTS 서버 (별도 설치) |
+| NVIDIA GPU | Fish-Speech 추론용 (필수) |
 
 ## Line templates
 
@@ -90,9 +105,12 @@ peon packs use my_character
 ```json
 {
   "session.start": ["Hello!", "Ready to go!"],
+  "task.acknowledge": ["Got it!", "On it!"],
   "task.complete": ["Done!", "All finished!"],
+  "task.error": ["Oops...", "Something broke..."],
   "input.required": ["Need your input!"],
-  ...
+  "resource.limit": ["I'm tired..."],
+  "user.spam": ["Slow down!"]
 }
 ```
 
