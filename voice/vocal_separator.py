@@ -23,12 +23,13 @@ def _ensure_tools_venv():
     if TOOLS_VENV_PYTHON.exists():
         return
     print("[Vocal] Setting up tools venv (first run)...")
+    # audio-separator's diffq-fixed requires Python <=3.12 (Cython build fails on 3.13+)
     subprocess.check_call(
-        [sys.executable, "-m", "uv", "venv", str(TOOLS_DIR / ".venv")],
+        ["uv", "venv", "--python", "3.12", str(TOOLS_DIR / ".venv")],
         cwd=str(TOOLS_DIR),
     )
     subprocess.check_call(
-        [sys.executable, "-m", "uv", "pip", "install",
+        ["uv", "pip", "install",
          "audio-separator[cpu]", "--python", str(TOOLS_VENV_PYTHON)],
     )
     print("[Vocal] Tools venv ready.")

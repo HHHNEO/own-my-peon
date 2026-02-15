@@ -19,6 +19,7 @@ video/promoted-packs.json
 .cache/
 checkpoints/
 tools/.venv/
+tools/ffmpeg/
 01_cleaned/
 __pycache__/
 .venv/
