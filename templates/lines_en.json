@@ -1,0 +1,33 @@
+{
+  "session.start": [
+    "Hello! Ready to work!",
+    "I've been waiting for you!"
+  ],
+  "task.acknowledge": [
+    "Got it!",
+    "Leave it to me!",
+    "On it!"
+  ],
+  "task.complete": [
+    "All done!",
+    "Finished!",
+    "What's next?"
+  ],
+  "task.error": [
+    "Something went wrong...",
+    "There was an error..."
+  ],
+  "input.required": [
+    "Need your input!",
+    "Are you there?",
+    "Please check this!"
+  ],
+  "resource.limit": [
+    "I'm getting tired...",
+    "Need a little break..."
+  ],
+  "user.spam": [
+    "Slow down!",
+    "Not so fast!"
+  ]
+}

@@ -436,6 +436,12 @@ peon packs list                   # list all installed packs
 
 Want to add your own pack? See the [full guide at openpeon.com/create](https://openpeon.com/create) or [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Create your own voice pack
+
+Use TTS voice cloning to generate a pack with **any character's voice** from a single audio clip. No game files needed — just a reference recording and a list of lines.
+
+**[Voice Clone Pack Guide &rarr; docs/voice-clone-guide.md](docs/voice-clone-guide.md)**
+
 ## Uninstall
 
 **macOS/Linux:**
