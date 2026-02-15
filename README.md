@@ -59,7 +59,7 @@ python -m tools.api_server \
   --decoder-config-name modded_dac_vq --compile
 ```
 
-> **Note**: A CUDA GPU is required for Fish-Speech inference. See the [Fish-Speech docs](https://speech.fish.audio/) for detailed setup instructions. The server is ready when `http://127.0.0.1:8080` responds.
+> **Note**: A GPU (NVIDIA or AMD) is recommended for faster inference, but CPU-only works too. See the [Fish-Speech docs](https://speech.fish.audio/) for detailed setup instructions. The server is ready when `http://127.0.0.1:8080` responds.
 
 ### 4. Generate your voice pack
 
@@ -91,7 +91,7 @@ What the script does:
 | Python 3.10+ | Runtime |
 | [uv](https://docs.astral.sh/uv/) | Python package manager |
 | [Fish-Speech](https://github.com/fishaudio/fish-speech) | TTS server (separate install) |
-| NVIDIA GPU | Required for Fish-Speech inference |
+| GPU (recommended) | NVIDIA, AMD, or CPU-only — GPU speeds up inference |
 
 ## Line templates
 

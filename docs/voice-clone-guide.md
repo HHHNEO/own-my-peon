@@ -13,7 +13,7 @@ peon-ping ships with game character voice packs, but you can create a pack with 
 | Python 3.10+ | Runtime |
 | [uv](https://docs.astral.sh/uv/) | Python package manager |
 | [Fish-Speech](https://github.com/fishaudio/fish-speech) | TTS server (별도 설치 필요) |
-| NVIDIA GPU | Fish-Speech 추론용 (필수) |
+| GPU (recommended) | NVIDIA, AMD, or CPU-only — GPU speeds up inference |
 | ffmpeg | Audio processing (`--separate-vocals` 사용 시) |
 
 ## Step 1: Prepare Reference Audio / 레퍼런스 음성 준비
