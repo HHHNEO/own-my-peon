@@ -16,3 +16,9 @@ homebrew-tap/
 PLAN-*.md
 checksums.txt
 video/promoted-packs.json
+.cache/
+checkpoints/
+tools/.venv/
+01_cleaned/
+__pycache__/
+.venv/

@@ -1,0 +1,11 @@
+[project]
+name = "own-my-peon"
+version = "0.1.0"
+description = "Voice clone pack generator for peon-ping"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "msgpack>=1.0",
+    "qwen-tts>=0.1.1",
+    "requests>=2.28",
+]

@@ -1,498 +1,105 @@
-# peon-ping
+# own-my-peon
 
-![macOS](https://img.shields.io/badge/macOS-blue) ![WSL2](https://img.shields.io/badge/WSL2-blue) ![Linux](https://img.shields.io/badge/Linux-blue) ![Windows](https://img.shields.io/badge/Windows-blue) ![SSH](https://img.shields.io/badge/SSH-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+Fork of [PeonPing/peon-ping](https://github.com/PeonPing/peon-ping) — **TTS voice cloning으로 나만의 peon-ping 음성팩 만들기**.
 
-![Claude Code](https://img.shields.io/badge/Claude_Code-hook-ffab01) ![Codex](https://img.shields.io/badge/Codex-adapter-ffab01) ![Cursor](https://img.shields.io/badge/Cursor-adapter-ffab01) ![OpenCode](https://img.shields.io/badge/OpenCode-adapter-ffab01) ![Kilo CLI](https://img.shields.io/badge/Kilo_CLI-adapter-ffab01) ![Kiro](https://img.shields.io/badge/Kiro-adapter-ffab01) ![Windsurf](https://img.shields.io/badge/Windsurf-adapter-ffab01) ![Antigravity](https://img.shields.io/badge/Antigravity-adapter-ffab01)
-
-**Game character voice lines when your AI coding agent needs attention.**
-
-AI coding agents don't notify you when they finish or need permission. You tab away, lose focus, and waste 15 minutes getting back into flow. peon-ping fixes this with voice lines from Warcraft, StarCraft, Portal, Zelda, and more — works with **Claude Code**, **Codex**, **Cursor**, **OpenCode**, **Kilo CLI**, **Kiro**, **Windsurf**, and **Google Antigravity**.
-
-**See it in action** &rarr; [peonping.com](https://peonping.com/)
+peon-ping은 AI 코딩 에이전트가 알림을 줄 때 게임 캐릭터 음성을 재생합니다. 이 fork는 좋아하는 캐릭터의 음성을 클로닝해서 나만의 음성팩을 만드는 도구와 가이드를 제공합니다.
 
 ---
 
-- [Install](#install)
-- [What you'll hear](#what-youll-hear)
-- [Quick controls](#quick-controls)
-- [Configuration](#configuration)
-- [Multi-IDE support](#multi-ide-support)
-- [Remote development](#remote-development-ssh--devcontainers--codespaces)
-- [Mobile notifications](#mobile-notifications)
-- [Sound packs](#sound-packs)
-- [Uninstall](#uninstall)
-- [Requirements](#requirements)
-- [How it works](#how-it-works)
-- [Links](#links)
+## What this fork adds
 
----
+| | Description |
+|---|---|
+| **[Voice Clone Guide](docs/voice-clone-guide.md)** | 레퍼런스 오디오 하나로 음성팩 생성하는 전체 가이드 (한/영) |
+| **[generate-voice-pack.py](scripts/generate-voice-pack.py)** | Fish-Speech TTS + BGM 분리 + openpeon.json 자동 생성 스크립트 |
+| **[Line templates](templates/)** | 일본어/영어 대사 템플릿 (CESP 카테고리별) |
 
-## Install
+## Quick start
 
-### Option 1: Homebrew (recommended)
+### 1. Install peon-ping
+
+원본 peon-ping을 먼저 설치합니다:
 
 ```bash
-brew install PeonPing/tap/peon-ping
-```
-
-Then run `peon-ping-setup` to register hooks and download sound packs. macOS and Linux.
-
-### Option 2: Installer script (macOS, Linux, WSL2)
-
-```bash
+# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash
-```
 
-### Option 3: Installer for Windows
-
-```powershell
+# Windows
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.ps1" -UseBasicParsing | Invoke-Expression
 ```
 
-Installs 10 curated English packs by default. Re-run to update while preserving config/state. Or **[pick your packs interactively at peonping.com](https://peonping.com/#picker)** and get a custom install command.
+> 전체 설치 옵션과 설정 방법: [PeonPing/peon-ping README](https://github.com/PeonPing/peon-ping)
 
-Useful installer flags:
-
-- `--all` — install all available packs
-- `--packs=peon,glados,...` — install specific packs only
-- `--local` — install packs and config into `./.claude/` for the current project (hooks are always registered globally in `~/.claude/settings.json`)
-- `--global` — explicit global install (same as default)
-- `--init-local-config` — create `./.claude/hooks/peon-ping/config.json` only
-
-`--local` does not modify your shell rc files (no global `peon` alias/completion injection). Hooks are always written to the global `~/.claude/settings.json` with absolute paths so they work from any project directory.
-
-Examples:
+### 2. Clone this repo & install dependencies
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --all
-curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --packs=peon,glados
-curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --local
+git clone https://github.com/HHHNEO/own-my-peon.git
+cd own-my-peon
+uv sync
 ```
 
-If a global install exists and you install local (or vice versa), the installer prompts you to remove the existing one to avoid conflicts.
-
-### Option 4: Clone and inspect first
+### 3. Set up Fish-Speech TTS
 
 ```bash
-git clone https://github.com/PeonPing/peon-ping.git
-cd peon-ping
-./install.sh
+# Download TTS model (first time only)
+huggingface-cli download fishaudio/openaudio-s1-mini --local-dir checkpoints/openaudio-s1-mini
+
+# Start API server (keep running in background)
+uv run python -m tools.api_server \
+  --listen 127.0.0.1:8080 \
+  --llama-checkpoint-path checkpoints/openaudio-s1-mini \
+  --decoder-checkpoint-path checkpoints/openaudio-s1-mini/codec.pth \
+  --decoder-config-name modded_dac_vq --compile
 ```
 
-## What you'll hear
-
-| Event | CESP Category | Examples |
-|---|---|---|
-| Session starts | `session.start` | *"Ready to work?"*, *"Yes?"*, *"What you want?"* |
-| Task finishes | `task.complete` | *"Work, work."*, *"I can do that."*, *"Okie dokie."* |
-| Permission needed | `input.required` | *"Something need doing?"*, *"Hmm?"*, *"What you want?"* |
-| Rapid prompts (3+ in 10s) | `user.spam` | *"Me busy, leave me alone!"* |
-
-Plus Terminal tab titles (`● project: done`) and desktop notifications when your terminal isn't focused.
-
-peon-ping implements the [Coding Event Sound Pack Specification (CESP)](https://github.com/PeonPing/openpeon) — an open standard for coding event sounds that any agentic IDE can adopt.
-
-## Quick controls
-
-Need to mute sounds and notifications during a meeting or pairing session? Two options:
-
-| Method | Command | When |
-|---|---|---|
-| **Slash command** | `/peon-ping-toggle` | While working in Claude Code |
-| **CLI** | `peon toggle` | From any terminal tab |
-
-Other CLI commands:
+### 4. Generate your voice pack
 
 ```bash
-peon pause                # Mute sounds
-peon resume               # Unmute sounds
-peon status               # Check if paused or active
-peon packs list           # List installed sound packs
-peon packs use <name>     # Switch to a specific pack
-peon packs next           # Cycle to the next pack
-peon packs remove <p1,p2> # Remove specific packs
-peon notifications on     # Enable desktop notifications
-peon notifications off    # Disable desktop notifications
-peon preview              # Play all sounds from session.start
-peon preview <category>   # Play all sounds from a specific category
-peon preview --list       # List all categories in the active pack
-peon mobile ntfy <topic>  # Set up phone notifications (free)
-peon mobile off           # Disable phone notifications
-peon mobile test          # Send a test notification
-peon relay --daemon       # Start audio relay (for SSH/devcontainer)
-peon relay --stop         # Stop background relay
+# In another terminal
+uv run python -X utf8 scripts/generate-voice-pack.py \
+  --ref-audio path/to/character_voice.wav \
+  --lines templates/lines_ja.json \
+  --pack-name my_character \
+  --lang ja
+
+# Activate
+peon packs use my_character
 ```
 
-Available CESP categories for `peon preview`: `session.start`, `task.acknowledge`, `task.complete`, `task.error`, `input.required`, `resource.limit`, `user.spam`.
-
-Tab completion is supported — type `peon packs use <TAB>` to see available pack names.
-
-Pausing mutes sounds and desktop notifications instantly. Persists across sessions until you resume. Tab titles remain active when paused.
-
-## Configuration
-
-peon-ping installs two slash commands in Claude Code:
-
-- `/peon-ping-toggle` — mute/unmute sounds
-- `/peon-ping-config` — change any setting (volume, packs, categories, etc.)
-
-You can also just ask Claude to change settings for you — e.g. "enable round-robin pack rotation", "set volume to 0.3", or "add glados to my pack rotation". No need to edit config files manually.
-
-Config location depends on install mode:
-
-- Global install: `$CLAUDE_CONFIG_DIR/hooks/peon-ping/config.json` (default `~/.claude/hooks/peon-ping/config.json`)
-- Local install: `./.claude/hooks/peon-ping/config.json`
-
-```json
-{
-  "volume": 0.5,
-  "categories": {
-    "session.start": true,
-    "task.acknowledge": true,
-    "task.complete": true,
-    "task.error": true,
-    "input.required": true,
-    "resource.limit": true,
-    "user.spam": true
-  }
-}
-```
-
-- **volume**: 0.0–1.0 (quiet enough for the office)
-- **desktop_notifications**: `true`/`false` — toggle desktop notification popups independently from sounds (default: `true`)
-- **categories**: Toggle individual CESP sound categories on/off (e.g. `"session.start": false` to disable greeting sounds)
-- **annoyed_threshold / annoyed_window_seconds**: How many prompts in N seconds triggers the `user.spam` easter egg
-- **silent_window_seconds**: Suppress `task.complete` sounds and notifications for tasks shorter than N seconds. (e.g. `10` to only hear sounds for tasks that take longer than 10 seconds)
-- **pack_rotation**: Array of pack names (e.g. `["peon", "sc_kerrigan", "peasant"]`). Used when `pack_rotation_mode` is `random` or `round-robin`; also lists valid packs for `agentskill` mode. Leave empty `[]` to use `active_pack` only.
-- **pack_rotation_mode**: `"random"` (default), `"round-robin"`, or `"agentskill"`. With `random`/`round-robin`, each session picks one pack from `pack_rotation`. With `agentskill`, the `/peon-ping-use <pack>` command assigns a pack per session. Invalid or missing packs fall back to `active_pack` and the stale assignment is removed.
-- **session_ttl_days** (number, default: 7): Expire stale per-session pack assignments older than N days. Keeps `.state.json` from growing unbounded when using `agentskill` mode.
-
-## Multi-IDE Support
-
-peon-ping works with any agentic IDE that supports hooks. Adapters translate IDE-specific events to the [CESP standard](https://github.com/PeonPing/openpeon).
-
-| IDE | Status | Setup |
-|---|---|---|
-| **Claude Code** | Built-in | `curl \| bash` install handles everything |
-| **OpenAI Codex** | Adapter | Add `notify = ["bash", "/absolute/path/to/.claude/hooks/peon-ping/adapters/codex.sh"]` to `~/.codex/config.toml` |
-| **Cursor** | Adapter | Add hook entries to `~/.cursor/hooks.json` pointing to `adapters/cursor.sh` |
-| **OpenCode** | Adapter | `curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode.sh \| bash` ([setup](#opencode-setup)) |
-| **Kilo CLI** | Adapter | `curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/kilo.sh \| bash` ([setup](#kilo-cli-setup)) |
-| **Kiro** | Adapter | Add hook entries to `~/.kiro/agents/peon-ping.json` pointing to `adapters/kiro.sh` ([setup](#kiro-setup)) |
-| **Windsurf** | Adapter | Add hook entries to `~/.codeium/windsurf/hooks.json` pointing to `adapters/windsurf.sh` ([setup](#windsurf-setup)) |
-| **Google Antigravity** | Adapter | `bash ~/.claude/hooks/peon-ping/adapters/antigravity.sh` (requires `fswatch`: `brew install fswatch`) |
-
-### OpenCode setup
-
-A native TypeScript plugin for [OpenCode](https://opencode.ai/) with full [CESP v1.0](https://github.com/PeonPing/openpeon) conformance.
-
-**Quick install:**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode.sh | bash
-```
-
-The installer copies `peon-ping.ts` to `~/.config/opencode/plugins/` and creates a config at `~/.config/opencode/peon-ping/config.json`. Packs are stored at the shared CESP path (`~/.openpeon/packs/`).
-
-**Features:**
-
-- **Sound playback** via `afplay` (macOS), `pw-play`/`paplay`/`ffplay` (Linux) — same priority chain as the shell hook
-- **CESP event mapping** — `session.created` / `session.idle` / `session.error` / `permission.asked` / rapid prompt detection all map to standard CESP categories
-- **Desktop notifications** — rich notifications via [`terminal-notifier`](https://github.com/julienXX/terminal-notifier) when available (subtitle, per-project grouping), with `osascript` fallback. Fires only when the terminal is not focused.
-- **Terminal focus detection** — checks if your terminal app (Terminal, iTerm2, Warp, Alacritty, kitty, WezTerm, ghostty, Hyper) is frontmost via AppleScript before sending notifications
-- **Tab titles** — updates the terminal tab to show task status (`● project: working...` / `✓ project: done` / `✗ project: error`)
-- **Pack switching** — reads `active_pack` from config, loads the pack's `openpeon.json` manifest at runtime
-- **No-repeat logic** — avoids playing the same sound twice in a row per category
-- **Spam detection** — detects 3+ rapid prompts within 10 seconds, triggers `user.spam` voice lines
-
-<details>
-<summary>🖼️ Screenshot: desktop notifications with custom peon icon</summary>
-
-![peon-ping OpenCode notifications](https://github.com/user-attachments/assets/e433f9d1-2782-44af-a176-71875f3f532c)
-
-</details>
-
-> **Tip:** Install `terminal-notifier` (`brew install terminal-notifier`) for richer notifications with subtitle and grouping support.
-
-<details>
-<summary>🎨 Optional: custom peon icon for notifications</summary>
-
-By default, `terminal-notifier` shows a generic Terminal icon. The included script replaces it with the peon icon using built-in macOS tools (`sips` + `iconutil`) — no extra dependencies.
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode/setup-icon.sh)
-```
-
-Or if installed locally (Homebrew / git clone):
-
-```bash
-bash ~/.claude/hooks/peon-ping/adapters/opencode/setup-icon.sh
-```
-
-The script auto-finds the peon icon (Homebrew libexec, OpenCode config, or Claude hooks dir), generates a proper `.icns`, backs up the original `Terminal.icns`, and replaces it. Re-run after `brew upgrade terminal-notifier`.
-
-> **Future:** When [jamf/Notifier](https://github.com/jamf/Notifier) ships to Homebrew ([#32](https://github.com/jamf/Notifier/issues/32)), the plugin will migrate to it — Notifier has built-in `--rebrand` support, no icon hacks needed.
-
-</details>
-
-### Kilo CLI setup
-
-A native TypeScript plugin for [Kilo CLI](https://github.com/kilocode/cli) with full [CESP v1.0](https://github.com/PeonPing/openpeon) conformance. Kilo CLI is a fork of OpenCode and uses the same plugin system — this installer downloads the OpenCode plugin and patches it for Kilo.
-
-**Quick install:**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/kilo.sh | bash
-```
-
-The installer copies `peon-ping.ts` to `~/.config/kilo/plugins/` and creates a config at `~/.config/kilo/peon-ping/config.json`. Packs are stored at the shared CESP path (`~/.openpeon/packs/`).
-
-**Features:** Same as the [OpenCode adapter](#opencode-setup) — sound playback, CESP event mapping, desktop notifications, terminal focus detection, tab titles, pack switching, no-repeat logic, and spam detection.
-
-### Windsurf setup
-
-Add to `~/.codeium/windsurf/hooks.json` (user-level) or `.windsurf/hooks.json` (workspace-level):
-
-```json
-{
-  "hooks": {
-    "post_cascade_response": [
-      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh post_cascade_response", "show_output": false }
-    ],
-    "pre_user_prompt": [
-      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh pre_user_prompt", "show_output": false }
-    ],
-    "post_write_code": [
-      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh post_write_code", "show_output": false }
-    ],
-    "post_run_command": [
-      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh post_run_command", "show_output": false }
-    ]
-  }
-}
-```
-
-### Kiro setup
-
-Create `~/.kiro/agents/peon-ping.json`:
-
-```json
-{
-  "hooks": {
-    "agentSpawn": [
-      { "command": "bash ~/.claude/hooks/peon-ping/adapters/kiro.sh" }
-    ],
-    "userPromptSubmit": [
-      { "command": "bash ~/.claude/hooks/peon-ping/adapters/kiro.sh" }
-    ],
-    "stop": [
-      { "command": "bash ~/.claude/hooks/peon-ping/adapters/kiro.sh" }
-    ]
-  }
-}
-```
-
-`preToolUse`/`postToolUse` are intentionally excluded — they fire on every tool call and would be extremely noisy.
-
-## Remote development (SSH / Devcontainers / Codespaces)
-
-Coding on a remote server or inside a container? peon-ping auto-detects SSH sessions, devcontainers, and Codespaces, then routes audio and notifications through a lightweight relay running on your local machine.
-
-### SSH setup
-
-1. **On your local machine**, start the relay:
-   ```bash
-   peon relay --daemon
-   ```
-
-2. **SSH with port forwarding**:
-   ```bash
-   ssh -R 19998:localhost:19998 your-server
-   ```
-
-3. **Install peon-ping on the remote** — it auto-detects the SSH session and sends audio requests back through the forwarded port to your local relay.
-
-That's it. Sounds play on your laptop, not the remote server.
-
-### Devcontainers / Codespaces
-
-No port forwarding needed — peon-ping auto-detects `REMOTE_CONTAINERS` and `CODESPACES` environment variables and routes audio to `host.docker.internal:19998`. Just run `peon relay --daemon` on your host machine.
-
-### Relay commands
-
-```bash
-peon relay                # Start relay in foreground
-peon relay --daemon       # Start in background
-peon relay --stop         # Stop background relay
-peon relay --status       # Check if relay is running
-peon relay --port=12345   # Custom port (default: 19998)
-peon relay --bind=0.0.0.0 # Listen on all interfaces (less secure)
-```
-
-Environment variables: `PEON_RELAY_PORT`, `PEON_RELAY_HOST`, `PEON_RELAY_BIND`.
-
-If peon-ping detects an SSH or container session but can't reach the relay, it prints setup instructions on `SessionStart`.
-
-### Category-based API (for lightweight remote hooks)
-
-The relay supports a category-based endpoint that handles sound selection server-side. This is useful for remote machines where peon-ping isn't installed — the remote hook only needs to send a category name, and the relay picks a random sound from the active pack.
-
-**Endpoints:**
-
-| Endpoint | Description |
-|---|---|
-| `GET /health` | Health check (returns "OK") |
-| `GET /play?file=<path>` | Play a specific sound file (legacy) |
-| `GET /play?category=<cat>` | Play random sound from category (recommended) |
-| `POST /notify` | Send desktop notification |
-
-**Example remote hook (`scripts/remote-hook.sh`):**
-
-```bash
-#!/bin/bash
-RELAY_URL="${PEON_RELAY_URL:-http://127.0.0.1:19998}"
-EVENT=$(cat | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('hook_event_name',''))" 2>/dev/null)
-case "$EVENT" in
-  SessionStart)      CATEGORY="session.start" ;;
-  Stop)              CATEGORY="task.complete" ;;
-  PermissionRequest) CATEGORY="input.required" ;;
-  *)                 exit 0 ;;
-esac
-curl -sf "${RELAY_URL}/play?category=${CATEGORY}" >/dev/null 2>&1 &
-```
-
-Copy this to your remote machine and register it in `~/.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [{"command": "bash /path/to/remote-hook.sh"}],
-    "Stop": [{"command": "bash /path/to/remote-hook.sh"}],
-    "PermissionRequest": [{"command": "bash /path/to/remote-hook.sh"}]
-  }
-}
-```
-
-The relay reads `config.json` on your local machine to get the active pack and volume, loads the pack's manifest, and picks a random sound while avoiding repeats.
-
-## Mobile notifications
-
-Get push notifications on your phone when tasks finish or need attention — useful when you're away from your desk.
-
-### Quick start (ntfy.sh — free, no account needed)
-
-1. Install the [ntfy app](https://ntfy.sh) on your phone
-2. Subscribe to a unique topic in the app (e.g. `my-peon-notifications`)
-3. Run:
-   ```bash
-   peon mobile ntfy my-peon-notifications
-   ```
-
-Also supports [Pushover](https://pushover.net) and [Telegram](https://core.telegram.org/bots):
-
-```bash
-peon mobile pushover <user_key> <app_token>
-peon mobile telegram <bot_token> <chat_id>
-```
-
-### Mobile commands
-
-```bash
-peon mobile on            # Enable mobile notifications
-peon mobile off           # Disable mobile notifications
-peon mobile status        # Show current config
-peon mobile test          # Send a test notification
-```
-
-Mobile notifications fire on every event regardless of window focus — they're independent from desktop notifications and sounds.
-
-## Sound packs
-
-60+ packs across Warcraft, StarCraft, Red Alert, Portal, Zelda, Dota 2, Helldivers 2, Elder Scrolls, and more. The default install includes 10 curated English packs:
-
-| Pack | Character | Sounds |
-|---|---|---|
-| `peon` (default) | Orc Peon (Warcraft III) | "Ready to work?", "Work, work.", "Okie dokie." |
-| `peasant` | Human Peasant (Warcraft III) | "Yes, milord?", "Job's done!", "Ready, sir." |
-| `glados` | GLaDOS (Portal) | "Oh, it's you.", "You monster.", "Your entire team is dead." |
-| `sc_kerrigan` | Sarah Kerrigan (StarCraft) | "I gotcha", "What now?", "Easily amused, huh?" |
-| `sc_battlecruiser` | Battlecruiser (StarCraft) | "Battlecruiser operational", "Make it happen", "Engage" |
-| `ra2_kirov` | Kirov Airship (Red Alert 2) | "Kirov reporting", "Bombardiers to your stations" |
-| `dota2_axe` | Axe (Dota 2) | "Axe is ready!", "Axe-actly!", "Come and get it!" |
-| `duke_nukem` | Duke Nukem | "Hail to the king!", "Groovy.", "Balls of steel." |
-| `tf2_engineer` | Engineer (Team Fortress 2) | "Sentry going up.", "Nice work!", "Cowboy up!" |
-| `hd2_helldiver` | Helldiver (Helldivers 2) | "For democracy!", "How 'bout a nice cup of Liber-tea?" |
-
-**[Browse all packs with audio previews &rarr; openpeon.com/packs](https://openpeon.com/packs)**
-
-Install all with `--all`, or switch packs anytime:
-
-```bash
-peon packs use glados             # switch to a specific pack
-peon packs next                   # cycle to the next pack
-peon packs list                   # list all installed packs
-```
-
-Want to add your own pack? See the [full guide at openpeon.com/create](https://openpeon.com/create) or [CONTRIBUTING.md](CONTRIBUTING.md).
-
-### Create your own voice pack
-
-Use TTS voice cloning to generate a pack with **any character's voice** from a single audio clip. No game files needed — just a reference recording and a list of lines.
-
-**[Voice Clone Pack Guide &rarr; docs/voice-clone-guide.md](docs/voice-clone-guide.md)**
-
-## Uninstall
-
-**macOS/Linux:**
-
-```bash
-bash "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/hooks/peon-ping/uninstall.sh        # global
-bash .claude/hooks/peon-ping/uninstall.sh           # project-local
-```
-
-**Windows (PowerShell):**
-
-```powershell
-# Standard uninstall (prompts before deleting sounds)
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\peon-ping\uninstall.ps1"
-
-# Keep sound packs (removes everything else)
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\peon-ping\uninstall.ps1" -KeepSounds
-```
+**[Full guide with all options &rarr; docs/voice-clone-guide.md](docs/voice-clone-guide.md)**
 
 ## Requirements
 
-- **macOS** — `afplay` (built-in), AppleScript for notifications
-- **Linux** — one of: `pw-play`, `paplay`, `ffplay`, `mpv`, `play` (SoX), or `aplay`; `notify-send` for notifications
-- **Windows** — native PowerShell with `MediaPlayer` and WinForms (no WSL required), or WSL2
-- **All platforms** — `python3` (not required for native Windows)
-- **SSH/remote** — `curl` on the remote host
-- **IDE** — Claude Code with hooks support (or any supported IDE via [adapters](#multi-ide-support))
+| Tool | Purpose |
+|------|---------|
+| [peon-ping](https://github.com/PeonPing/peon-ping) | Sound notification system |
+| Python 3.10+ | Runtime |
+| [uv](https://docs.astral.sh/uv/) | Python package manager |
+| ffmpeg | Audio processing |
+| NVIDIA GPU (recommended) | Fish-Speech TTS inference |
 
-## How it works
+## Line templates
 
-`peon.sh` is a Claude Code hook registered for `SessionStart`, `UserPromptSubmit`, `Stop`, `Notification`, and `PermissionRequest` events. On each event:
+대사를 커스터마이징하려면 `templates/` 폴더의 JSON을 복사해서 수정하세요:
 
-1. **Event mapping** — an embedded Python block maps the hook event to a [CESP](https://github.com/PeonPing/openpeon) sound category (`session.start`, `task.complete`, `input.required`, etc.)
-2. **Sound selection** — picks a random voice line from the active pack's manifest, avoiding repeats
-3. **Audio playback** — plays the sound asynchronously via `afplay` (macOS), PowerShell `MediaPlayer` (WSL2), or `pw-play`/`paplay`/`ffplay`/`mpv`/`aplay` (Linux)
-4. **Notifications** — updates the Terminal tab title and sends a desktop notification if the terminal isn't focused
-5. **Remote routing** — in SSH sessions, devcontainers, and Codespaces, audio and notification requests are forwarded over HTTP to a [relay server](#remote-development-ssh--devcontainers--codespaces) on your local machine
+- [`templates/lines_ja.json`](templates/lines_ja.json) — 일본어 (Japanese)
+- [`templates/lines_en.json`](templates/lines_en.json) — 영어 (English)
 
-Sound packs are downloaded from the [OpenPeon registry](https://github.com/PeonPing/registry) at install time. The official packs are hosted in [PeonPing/og-packs](https://github.com/PeonPing/og-packs). Sound files are property of their respective publishers (Blizzard, Valve, EA, etc.) and are distributed under fair use for personal notification purposes.
+각 [CESP 카테고리](https://github.com/PeonPing/openpeon)별로 대사를 정의합니다:
 
-## Links
+```json
+{
+  "session.start": ["Hello!", "Ready to go!"],
+  "task.complete": ["Done!", "All finished!"],
+  "input.required": ["Need your input!"],
+  ...
+}
+```
 
-- [@peonping on X](https://x.com/peonping) — updates and announcements
-- [peonping.com](https://peonping.com/) — landing page
-- [openpeon.com](https://openpeon.com/) — CESP spec, pack browser, creation guide
-- [OpenPeon registry](https://github.com/PeonPing/registry) — pack registry (GitHub Pages)
-- [og-packs](https://github.com/PeonPing/og-packs) — official sound packs
-- [License (MIT)](LICENSE)
+## Upstream
 
-## Support the project
+이 fork는 [PeonPing/peon-ping](https://github.com/PeonPing/peon-ping)의 fork입니다. peon-ping 자체의 설치, 설정, IDE 지원, 사운드팩 목록 등은 원본 README를 참조하세요.
 
-- Venmo: [@garysheng](https://venmo.com/garysheng)
-- Community Token (DYOR / have fun): Someone created a $PEON token on Base — we receive TX fees which help fund development. [`0xf4ba744229afb64e2571eef89aacec2f524e8ba3`](https://dexscreener.com/base/0xf4bA744229aFB64E2571eef89AaceC2F524e8bA3)
+## License
 
+[MIT](LICENSE)

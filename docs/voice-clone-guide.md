@@ -19,15 +19,14 @@ peon-ping ships with game character voice packs, but you can create a pack with 
 
 Collect a short (5-30 second) audio clip of the target voice. Supported formats: `.mp3`, `.wav`, `.flac`.
 
-- BGM이 섞여 있어도 괜찮습니다 — 스크립트가 자동으로 보컬을 분리합니다.
+- BGM이 섞여 있어도 괜찮습니다 — 스크립트가 자동으로 보컬을 분리합니다 (`--separate-vocals`).
 - 대사가 명확하게 들리는 클립일수록 결과가 좋습니다.
-- Place the file anywhere accessible (e.g. `C:\WORK\Voice\01_input\ja\character.mp3`).
 
-## Step 2: Clone the Voice Project / Voice 프로젝트 설정
+## Step 2: Clone & Install / 프로젝트 설치
 
 ```bash
-git clone <your-voice-repo> C:\WORK\Voice
-cd C:\WORK\Voice
+git clone https://github.com/HHHNEO/own-my-peon.git
+cd own-my-peon
 uv sync
 ```
 
@@ -77,12 +76,9 @@ Copy a template and edit it. Each CESP category needs at least one line:
 ### Run the generator
 
 ```bash
-cd C:\WORK\own-my-peon
-
-uv run --directory C:\WORK\Voice python -X utf8 \
-  C:\WORK\own-my-peon\scripts\generate-voice-pack.py \
-  --ref-audio C:\WORK\Voice\01_input\ja\character.mp3 \
-  --lines C:\WORK\own-my-peon\templates\lines_ja.json \
+uv run python -X utf8 scripts/generate-voice-pack.py \
+  --ref-audio path/to/character_voice.wav \
+  --lines templates/lines_ja.json \
   --pack-name my_character \
   --lang ja
 ```

@@ -1,12 +1,12 @@
 """Generate a peon-ping voice pack using Fish-Speech TTS voice cloning.
 
-Requires the Voice project (C:\\WORK\\Voice) with Fish-Speech and
-its API server running at http://127.0.0.1:8080.
+Requires Fish-Speech API server running at http://127.0.0.1:8080.
 
 Usage:
-    uv run --directory C:\\WORK\\Voice python -X utf8 scripts/generate-voice-pack.py \\
-        --ref-audio path/to/reference.wav \\
-        --lines templates/lines_ja.json \\
+    cd own-my-peon
+    uv run python -X utf8 scripts/generate-voice-pack.py \
+        --ref-audio path/to/reference.wav \
+        --lines templates/lines_ja.json \
         --pack-name my_character --lang ja
 """
 
@@ -17,10 +17,10 @@ import os
 import sys
 from pathlib import Path
 
-# Voice project must be importable
-VOICE_PROJECT = Path(os.environ.get("VOICE_PROJECT", r"C:\WORK\Voice"))
-if str(VOICE_PROJECT) not in sys.path:
-    sys.path.insert(0, str(VOICE_PROJECT))
+# Ensure project root is importable (for `voice` package)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # ── Category-to-filename prefix mapping ──────────────────────────────
@@ -42,7 +42,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ref-audio", type=Path, required=True,
                     help="Path to reference audio file (mp3/wav/flac)")
     p.add_argument("--lines", type=Path, required=True,
-                    help="Path to lines JSON (category → list of strings)")
+                    help="Path to lines JSON (category -> list of strings)")
     p.add_argument("--pack-name", required=True,
                     help="Pack name (used as folder name)")
     p.add_argument("--lang", default="ja", choices=["ja", "en", "ko"],
@@ -109,7 +109,7 @@ def main():
 
     # Optional: separate vocals from BGM
     if args.separate_vocals:
-        from src.vocal_separator import separate_vocals
+        from voice.vocal_separator import separate_vocals
         print(f"[1/4] Separating vocals from {ref_audio}...")
         ref_audio = separate_vocals(ref_audio)
         print(f"  Cleaned audio: {ref_audio}")
@@ -125,8 +125,8 @@ def main():
     print(f"[2/4] Loaded {total} lines across {len(lines)} categories")
 
     # Initialize TTS
-    from src.adapters.fish_speech import FishSpeechAdapter
-    from src.transcriber import Transcriber
+    from voice.adapters.fish_speech import FishSpeechAdapter
+    from voice.transcriber import Transcriber
 
     adapter = FishSpeechAdapter(api_url=args.fish_speech_url)
     if not adapter.is_available():
@@ -137,7 +137,7 @@ def main():
 
     # Transcribe reference for TTS conditioning
     transcriber = Transcriber(model_name="Qwen/Qwen3-ASR-0.6B")
-    transcript_dir = VOICE_PROJECT / "02_transcript"
+    transcript_dir = PROJECT_ROOT / ".cache" / "transcripts"
     ref_text = transcriber.transcribe_with_cache(
         ref_audio, transcript_dir, language=args.lang,
     )
